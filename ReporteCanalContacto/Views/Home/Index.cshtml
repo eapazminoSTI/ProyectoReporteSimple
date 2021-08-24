@@ -1,0 +1,236 @@
+﻿@model ReporteCanalContacto.Models.FiltroBusqueda
+
+<br />
+@Html.LabelFor(model => model.fechaDesde, new { htmlAttributes = new { @class = "control-label col-md-2" } })
+<div class="form-group">
+    <div class="col-md-10" , style="padding-left: 0px;">
+        @Html.EditorFor(model => model.fechaDesde, new { htmlAttributes = new { @class = "datepicker", autocomplete = "off", @readonly ="readonly"  } } )
+        @Html.EditorFor(model => model.fechaHasta, new { htmlAttributes = new { @class = "datepicker1", autocomplete = "off", @readonly = "readonly" } } )
+        <input id="buscar" type="submit" value="Filtrar" class="btn btn-default" ,style="padding: 2px 12px !important;" />
+        <br />
+    </div>
+</div>
+
+<br />
+
+<div class="form-group">
+    @Html.Label("Filtrar por Canal:")
+    <select id="tipoCanal" class="form-control" style="width: 20%;">
+        <option value="NA" selected>-Seleccione-</option>
+        <option value="FLUJO IVR">FLUJO IVR</option>
+        <option value="CHAT WEB">CHAT WEB</option>
+        <option value="WHATSAPP">WHATSAPP</option>
+    </select>
+
+    @Html.Label("Filtrar por Consulta:")
+    <select id="tipoConsulta" class="form-control" style="width: 20%;">
+        <option value="NA" selected>-Seleccione-</option>
+        <option value="CUENTAS">CUENTAS</option>
+        <option value="TARJETAS">TARJETAS</option>
+        <option value="CRÉDITOS">CRÉDITOS</option>
+        <option value="CAMPAÑAS">CAMPAÑAS</option>
+        <option value="BLOQUEO CUENTA">BLOQUEO CUENTA</option>
+        <option value="BLOQUEO TARJETA CRÉDITO">BLOQUEO TARJETA CRÉDITO</option>
+        <option value="BLOQUEO TARJETA DÉBITO">BLOQUEO TARJETA DÉBITO</option>
+    </select>
+</div>
+
+<br />
+
+<div id="chart" style="width: 500px; height: 400px; margin: auto;"></div>
+
+<br />
+
+<div id="" class="tabcontent1">
+    <table id="logTable" class="display" cellspacing="0" style="width:100%">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>CÉDULA</th>
+                <th>CONSULTA</th>
+                <th>TIPO</th>
+                <th>FECHA</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+
+<a href="@Url.Action("ReporteCanalContacto","Home")">Exportar Reporte</a>
+
+@section scripts{
+
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.11.2/moment.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+    <script src="//cdn.datatables.net/plug-ins/1.10.12/sorting/datetime-moment.js"></script>
+    <script src="~/Scripts/jquery-ui-1.12.1.min.js"></script>
+
+    <link href="//cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/responsive/2.1.1/css/responsive.bootstrap.min.css" rel="stylesheet" />
+
+    <script type="text/javascript">
+
+        function drawChart(result) {
+
+            var data = google.visualization.arrayToDataTable(result);
+
+            //Pie
+            var options = {
+                title: 'Reporte',
+                chartArea: { left: 20, top: 0, width: '120%', height: '120%' }
+            };
+            var chart = new google.visualization.PieChart($("#chart")[0]);
+            chart.draw(data, options);
+
+        }
+
+        function graficas() {
+
+            var viewModel = {
+                filtroFecha: {
+                    fechaDesde: $('#fechaDesde').val(),
+                    fechaHasta: $('#fechaHasta').val(),
+                    tipoCanal: $('#tipoCanal').val(),
+                    tipoConsulta: $('#tipoConsulta').val(),
+                }
+            };
+            $.ajax({
+                type: "POST",
+                url: "/Home/AjaxMethod2",
+                data: JSON.stringify(viewModel),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (result) {
+
+                    google.charts.load('current', { 'packages': ['corechart'] });
+                    google.charts.setOnLoadCallback(function () {
+                        drawChart(result);
+                    });
+                }
+            });
+        }
+
+
+        $(document).ready(function () {
+
+            graficas();
+            tabla();
+
+            function tabla() {
+
+                $("#logTable").DataTable(
+                {
+                    'responsive': true,
+                    "ajax": {
+                        "url": '@Url.Action("GetList", "Home")',
+                        "type": "POST",
+                        "dataSrc": "",
+                        "datatype": "json"
+                    },
+                    "columnDefs": [
+                        { targets: [0], visible: false, searchable: true, orderable: false },
+                        { targets: [1], visible: true, searchable: true, orderable: false },
+                        { targets: [2], visible: true, searchable: true, orderable: true },
+                        { targets: [3], visible: true, searchable: true, orderable: false },
+                        {
+                            targets: [4], visible: true, searchable: true, orderable: false,
+                            render: function (data, type, full) {
+                                return moment(data).format('DD/MM/YYYY')
+                            }
+                        }
+
+                    ],
+                    "columns": [
+
+                        { "data": "id" },
+                        { "data": "cedula" },
+                        { "data": "consulta" },
+                        { "data": "tipo" },
+                        { "data": "fecha" },
+
+                    ]
+                });
+            }
+
+            $("#buscar").click(function (e) {
+
+                graficas();
+                $("#logTable").dataTable().fnDestroy();
+
+                 $("#logTable").DataTable(
+                 {
+                     'responsive': true,
+                     "ajax": {
+                         "url": '@Url.Action("GetList", "Home")',
+                         "data": {
+                             "fecha": {
+                                 "fechaDesde": $('#fechaDesde').val(),
+                                 "fechaHasta": $('#fechaHasta').val(),
+                                 "tipoCanal": $('#tipoCanal').val(),
+                                 "tipoConsulta": $('#tipoConsulta').val(),
+                             }
+                         },
+                         "dataSrc": "",
+                         "type": "POST",
+                         "datatype": "json"
+                     },
+                     "deferRender": true,
+
+                     "columnDefs": [
+                          { targets: [0], visible: false, searchable: true, orderable: false },
+                          { targets: [1], visible: true, searchable: true, orderable: false },
+                          { targets: [2], visible: true, searchable: true, orderable: false },
+                          { targets: [3], visible: true, searchable: true, orderable: false },
+                          {
+                             targets: [4], visible: true, searchable: true, orderable: false,
+                             render: function (data, type, full) {
+                                 return moment(data).format('DD/MM/YYYY')
+                             }
+
+                          }
+
+                 ],
+                 "columns": [
+
+                     { "data": "id" },
+                     { "data": "cedula" },
+                     { "data": "consulta" },
+                     { "data": "tipo" },
+                     { "data": "fecha" },
+
+                     ]
+                 });
+            });
+
+
+
+        });
+
+        $(function () {
+            $.datepicker.setDefaults($.datepicker.regional["es"]);
+            $(".datepicker").datepicker({
+                changeMonth: true,
+                changeYear: true,
+                dateFormat: "dd/MM/yy",
+                showOn: "both",
+                buttonText: "Desde"
+            }).datepicker("setDate", new Date());
+
+            $.datepicker.setDefaults($.datepicker.regional["es"]);
+            $(".datepicker1").datepicker({
+                changeMonth: true,
+                changeYear: true,
+                dateFormat: "dd/MM/yy",
+                showOn: "both",
+                buttonText: "Hasta"
+            }).datepicker("setDate", new Date());
+        });
+
+    </script>
+
+}
